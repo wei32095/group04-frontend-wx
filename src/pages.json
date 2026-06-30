@@ -1,0 +1,105 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/course/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/homework/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/studyroom/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/point/index",
+			"style": {
+				"navigationBarTitleText": "积分"
+			}
+		},
+		{
+			"path": "pages/analysis/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/userinfo/index",
+			"style": {
+				"navigationBarTitleText": "个人信息",
+				"navigationBarBackgroundColor": "#2E7D32",
+				"navigationBarTextStyle": "white"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "教育小程序",
+		"navigationBarBackgroundColor": "#4A90D9",
+		"backgroundColor": "#F5F5F5"
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#4CAF50",
+		"backgroundColor": "#FFFFFF",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/course/index",
+				"text": "课程",
+				"iconPath": "static/tab/course.png",
+				"selectedIconPath": "static/tab/course-active.png"
+			},
+			{
+				"pagePath": "pages/homework/index",
+				"text": "作业",
+				"iconPath": "static/tab/homework.png",
+				"selectedIconPath": "static/tab/homework-active.png"
+			},
+			{
+				"pagePath": "pages/index/index",
+				"text": "通知",
+				"iconPath": "static/tab/notice.png",
+				"selectedIconPath": "static/tab/notice-active.png"
+			},
+			{
+				"pagePath": "pages/studyroom/index",
+				"text": "自习室",
+				"iconPath": "static/tab/studyroom.png",
+				"selectedIconPath": "static/tab/studyroom-active.png"
+			},
+			{
+				"pagePath": "pages/profile/index",
+				"text": "我的",
+				"iconPath": "static/tab/profile.png",
+				"selectedIconPath": "static/tab/profile-active.png"
+			}
+		]
+	}
+}
