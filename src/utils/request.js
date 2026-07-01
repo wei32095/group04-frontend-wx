@@ -2,14 +2,14 @@ const ENV = 'development'
 
 const BASE_URL_MAP = {
   //sun热点
- /* development: 'http://192.168.43.232:8080/qingyun',
+  development: 'http://192.168.43.232:8080/qingyun',
   staging: 'http://192.168.43.232:8080/qingyun',
-  production: 'http://192.168.43.232:8080/qingyun' */
+  production: 'http://192.168.43.232:8080/qingyun' 
   
   //我的热点
-  development: 'http://10.23.184.106:8080/qingyun',
+  /* development: 'http://10.23.184.106:8080/qingyun',
   staging: 'http://10.23.184.106:8080/qingyun',
-  production: 'http://10.23.184.106:8080/qingyun'
+  production: 'http://10.23.184.106:8080/qingyun' */
 }
 
 const baseUrl = BASE_URL_MAP[ENV] || BASE_URL_MAP.development

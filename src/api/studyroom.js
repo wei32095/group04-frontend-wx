@@ -24,6 +24,10 @@ export async function createStudyroom(data) {
   return http.post('/studyroom/create', data)
 }
 
+export async function startStudy(data) {
+  return http.post('/studyroom/create', data)
+}
+
 export async function joinStudyroom(data) {
   return http.post('/studyroom/join', data)
 }

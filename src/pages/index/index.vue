@@ -39,42 +39,112 @@
 </template>
 
 <script setup>
-const noticeList = [
-  {
-    icon: '📢',
-    iconBgColor: '#FFF3E0',
-    iconColor: '#FF9800',
-    title: '系统公告 - 本学期期末安排已发布',
-    date: '2026-07-01',
-    desc: '各位同学，本学期的期末考试及放假时间安排已经发布在教务系统中，请大家及时查阅并做好复习准备。',
-    read: false
-  },
-  {
-    icon: '📚',
-    iconBgColor: '#E3F2FD',
-    iconColor: '#2196F3',
-    title: '课程提醒 - 高等数学下周将进行期中测验',
-    date: '2026-06-28',
-    desc: '张教授提醒：下周三（7月3日）第二节课将进行高等数学期中测验，范围包含前三章内容。',
-    read: false
-  },
-  {
-    icon: '✅',
-    iconBgColor: '#E8F5E9',
-    iconColor: '#4CAF50',
-    title: '作业提醒 - 数据结构实验报告已批改完成',
-    date: '2026-06-25',
-    desc: '你的"二叉树遍历实验报告"已经批改完成，得分：A。点击查看老师评语。',
-    read: true
-  }
-]
+import { ref, onMounted, onUnmounted } from 'vue'
+import http from '@/utils/request'
 
-function handleCardClick(item) {
-  console.log('点击通知卡片:', item.title)
+const noticeList = ref([])
+const prevUnread = ref(0)
+let pollTimer = null
+
+const iconConfig = {
+  0: { icon: '📢', iconBgColor: '#FFF3E0', iconColor: '#FF9800' },
+  1: { icon: '📚', iconBgColor: '#E3F2FD', iconColor: '#2196F3' },
+  2: { icon: '✅', iconBgColor: '#E8F5E9', iconColor: '#4CAF50' },
+  4: { icon: '📝', iconBgColor: '#F3E5F5', iconColor: '#9C27B0' },
+  default: { icon: '📌', iconBgColor: '#E0E0E0', iconColor: '#666666' }
 }
 
-function handleMarkAllRead() {
-  console.log('全部标记为已读')
+function getIconConfig(type) {
+  return iconConfig[type] || iconConfig.default
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  return `${month}月${day}日`
+}
+
+onMounted(() => {
+  fetchNotices()
+  startPolling()
+})
+
+onUnmounted(() => {
+  stopPolling()
+})
+
+function startPolling() {
+  pollTimer = setInterval(() => {
+    fetchNotices()
+  }, 30000)
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+async function fetchNotices() {
+  try {
+    const res = await http.get('/notices', { page: 1, size: 10 }, { loading: false })
+    console.log('获取通知列表:', res)
+    if (res) {
+      const list = res.location || []
+      noticeList.value = list.map(item => {
+        const iconCfg = getIconConfig(item.noticeType)
+        return {
+          id: item.id,
+          icon: iconCfg.icon,
+          iconBgColor: iconCfg.iconBgColor,
+          iconColor: iconCfg.iconColor,
+          title: item.noticeTitle || '',
+          date: formatDate(item.pushTime),
+          desc: item.noticeContent || '',
+          read: item.noticeStatus === 1
+        }
+      })
+      
+      const currentUnread = res.unreadCount || 0
+      if (currentUnread > prevUnread.value) {
+        uni.showToast({ title: '您有新的通知', icon: 'none' })
+      }
+      prevUnread.value = currentUnread
+    }
+  } catch (error) {
+    console.error('获取通知列表失败:', error)
+  }
+}
+
+async function handleCardClick(item) {
+  const notice = noticeList.value.find(n => n.id === item.id)
+  if (notice) {
+    notice.read = true
+  }
+  
+  try {
+    await http.put(`/notices/read/${item.id}`)
+    console.log('标记通知已读成功:', item.id)
+  } catch (error) {
+    console.error('标记通知已读失败:', error)
+  }
+}
+
+async function handleMarkAllRead() {
+  noticeList.value.forEach(item => {
+    item.read = true
+  })
+  
+  try {
+    await http.put('/notices/read-all')
+    console.log('全部标记通知已读成功')
+    uni.showToast({ title: '已全部已读', icon: 'success' })
+  } catch (error) {
+    console.error('全部标记通知已读失败:', error)
+  }
 }
 </script>
 

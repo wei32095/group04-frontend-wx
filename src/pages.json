@@ -32,6 +32,18 @@
 			}
 		},
 		{
+			"path": "pages/timer/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/pomodoro/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/point/index",
 			"style": {
 				"navigationBarTitleText": "积分"

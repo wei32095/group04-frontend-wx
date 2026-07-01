@@ -41,16 +41,13 @@
       <view class="timer-row" v-if="currentTimeMode === 'countdown'">
         <view class="timer-item">
           <text class="form-label">倒计时长</text>
-          <view class="timer-input-wrap">
-            <input 
-              class="timer-input" 
-              type="number" 
-              placeholder="请输入分钟数" 
-              v-model="countdownMinutes"
-              @input="handleCountdownInput"
-            />
-            <text class="timer-unit">分钟</text>
-          </view>
+          <picker :value="countdownIndex" :range="countdownOptions" @change="handleCountdownChange">
+            <view class="timer-select">
+              <text class="select-value">{{ countdownMinutes || '请选择时长' }}</text>
+              <text class="select-unit">分钟</text>
+              <text class="select-arrow">▾</text>
+            </view>
+          </picker>
         </view>
       </view>
       
@@ -116,12 +113,15 @@
 
 <script setup>
 import { ref } from 'vue'
+import { createStudyroom } from '@/api/studyroom'
 
 const currentGoal = ref('')
 const currentTimeMode = ref('forward')
 const timeModeOptions = ['正计时', '倒计时']
 const timeModeIndex = ref(0)
 const countdownMinutes = ref('')
+const countdownOptions = ['15', '30', '45', '60', '90', '120']
+const countdownIndex = ref(-1)
 const focusMode = ref('normal')
 
 const studyRecords = [
@@ -164,8 +164,10 @@ function handleTimeModeChange(e) {
   console.log('切换计时模式:', currentTimeMode.value)
 }
 
-function handleCountdownInput(e) {
-  console.log('输入倒计时分钟:', e.detail.value)
+function handleCountdownChange(e) {
+  countdownIndex.value = e.detail.value
+  countdownMinutes.value = countdownOptions[e.detail.value]
+  console.log('选择倒计时分钟:', countdownMinutes.value)
 }
 
 function handleModeSwitch(mode) {
@@ -173,11 +175,38 @@ function handleModeSwitch(mode) {
   console.log('切换专注模式:', mode)
 }
 
-function handleStartStudy() {
+async function handleStartStudy() {
   const goal = currentGoal.value || '自习'
-  const timeMode = currentTimeMode.value
-  const countdown = countdownMinutes.value
-  console.log('开始自习:', { goal, timeMode, countdown })
+  const mode = currentTimeMode.value === 'forward' ? 1 : 2
+  const planTime = currentTimeMode.value === 'countdown' ? parseInt(countdownMinutes.value) * 60 : null
+  const focusModeVal = focusMode.value === 'normal' ? 0 : 1
+  
+  if (mode === 2 && !countdownMinutes.value) {
+    uni.showToast({ title: '请选择倒计时时长', icon: 'none' })
+    return
+  }
+  
+  try {
+    const res = await createStudyroom({
+      goal,
+      mode,
+      planTime,
+      focusMode: focusModeVal
+    })
+    
+    if (res && res.id) {
+      const studyRecordId = res.id
+      if (focusMode.value === 'normal') {
+        const url = `/pages/timer/index?mode=${currentTimeMode.value}&countdown=${countdownMinutes.value || 0}&id=${studyRecordId}`
+        uni.navigateTo({ url })
+      } else {
+        uni.navigateTo({ url: `/pages/pomodoro/index?id=${studyRecordId}` })
+      }
+    }
+  } catch (error) {
+    console.error('开始自习失败:', error)
+    uni.showToast({ title: '开始自习失败', icon: 'none' })
+  }
 }
 
 function handleRecordClick(record) {
@@ -335,7 +364,7 @@ page {
   align-items: center;
 }
 
-.timer-input-wrap {
+.timer-select {
   display: flex;
   align-items: center;
   height: 80rpx;
@@ -344,13 +373,10 @@ page {
   padding: 0 20rpx;
 }
 
-.timer-input {
-  width: 200rpx;
+.select-unit {
   font-size: 28rpx;
-  color: #333333;
-  border-right: 2rpx solid #E0E0E0;
-  padding-right: 16rpx;
-  margin-right: 16rpx;
+  color: #666666;
+  margin-left: 8rpx;
 }
 
 .timer-unit {
