@@ -28,6 +28,10 @@ export async function getMyCourses(data) {
   return http.get('/course/my', data)
 }
 
+export async function getStudentCourseList(data) {
+  return http.get('/course/student/list', data)
+}
+
 export async function getCourseProgress(data) {
   return http.get('/course/progress', data)
 }
@@ -38,4 +42,8 @@ export async function updateCourseProgress(data) {
 
 export async function searchCourses(data) {
   return http.get('/course/search', data)
+}
+
+export async function joinCourseByCode(data) {
+  return http.post('/course/join', data)
 }

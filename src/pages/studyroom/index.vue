@@ -29,25 +29,21 @@
       <view class="form-row-full">
         <view class="form-item-full">
           <text class="form-label">计时模式</text>
-          <picker :value="timeModeIndex" :range="timeModeOptions" @change="handleTimeModeChange">
-            <view class="form-select-full">
-              <text class="select-value">{{ timeModeOptions[timeModeIndex] }}</text>
-              <text class="select-arrow">▾</text>
-            </view>
-          </picker>
+          <view class="form-select-full" @click="showTimeModePicker">
+            <text class="select-value">{{ timeModeOptions[timeModeIndex] }}</text>
+            <text class="select-arrow">▾</text>
+          </view>
         </view>
       </view>
       
-      <view class="timer-row" v-if="currentTimeMode === 'countdown'">
+      <view class="timer-row" v-if="timeModeIndex === 1">
         <view class="timer-item">
           <text class="form-label">倒计时长</text>
-          <picker :value="countdownIndex" :range="countdownOptions" @change="handleCountdownChange">
-            <view class="timer-select">
-              <text class="select-value">{{ countdownMinutes || '请选择时长' }}</text>
-              <text class="select-unit">分钟</text>
-              <text class="select-arrow">▾</text>
-            </view>
-          </picker>
+          <view class="timer-select" @click="showCountdownPicker">
+            <text class="select-value">{{ hasSelectedCountdown ? countdownMinutes : '请选择时长' }}</text>
+            <text class="select-unit">分钟</text>
+            <text class="select-arrow">▾</text>
+          </view>
         </view>
       </view>
       
@@ -75,13 +71,6 @@
     
     <view class="record-section">
       <text class="section-title">自习记录</text>
-      <view class="record-header">
-        <text class="header-item">日期</text>
-        <text class="header-item">目标</text>
-        <text class="header-item">时长</text>
-        <text class="header-item">状态</text>
-        <text class="header-item">积分</text>
-      </view>
       <view 
         class="record-row" 
         v-for="(record, index) in studyRecords" 
@@ -99,12 +88,12 @@
     <view class="stats-section">
       <view class="stat-card green">
         <text class="stat-label">本月自习总时长</text>
-        <text class="stat-value">18</text>
+        <text class="stat-value">{{ monthStudyHours }}</text>
         <text class="stat-unit">小时</text>
       </view>
       <view class="stat-card blue">
         <text class="stat-label">本周自习时长</text>
-        <text class="stat-value">7</text>
+        <text class="stat-value">{{ weekStudyHours }}</text>
         <text class="stat-unit">小时</text>
       </view>
     </view>
@@ -112,62 +101,108 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { createStudyroom } from '@/api/studyroom'
+import { ref, computed, onMounted } from 'vue'
+import { createStudyroom, getStudyroomRecords, getStudyroomStatistic } from '@/api/studyroom'
 
 const currentGoal = ref('')
-const currentTimeMode = ref('forward')
 const timeModeOptions = ['正计时', '倒计时']
 const timeModeIndex = ref(0)
 const countdownMinutes = ref('')
 const countdownOptions = ['15', '30', '45', '60', '90', '120']
-const countdownIndex = ref(-1)
+const countdownIndex = ref(0)
+const hasSelectedCountdown = ref(false)
 const focusMode = ref('normal')
 
-const studyRecords = [
-  {
-    date: '2026-07-01',
-    goal: '高数复习',
-    duration: '1h20m',
-    status: '完成',
-    statusColor: '#4CAF50',
-    points: '+25',
-    pointsColor: '#4CAF50'
-  },
-  {
-    date: '2026-06-30',
-    goal: '英语练习',
-    duration: '50m',
-    status: '完成',
-    statusColor: '#4CAF50',
-    points: '+18',
-    pointsColor: '#4CAF50'
-  },
-  {
-    date: '2026-06-29',
-    goal: '数据结构刷题',
-    duration: '2h05m',
-    status: '完成',
-    statusColor: '#4CAF50',
-    points: '+42',
-    pointsColor: '#4CAF50'
+const currentTimeMode = computed(() => {
+  return timeModeIndex.value === 0 ? 'forward' : 'countdown'
+})
+
+const studyRecords = ref([])
+const weekStudyHours = ref(0)
+const monthStudyHours = ref(0)
+
+function formatDuration(seconds) {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (hours > 0) {
+    return `${hours}h${minutes}m`
   }
-]
+  return `${minutes}m`
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  return dateStr.substring(0, 10)
+}
+
+async function fetchStudyRecords() {
+  try {
+    const res = await getStudyroomRecords({ page: 1, size: 10 })
+    if (res && res.location) {
+      studyRecords.value = res.location.map(record => ({
+        id: record.id,
+        date: formatDate(record.startTime),
+        goal: record.goal,
+        duration: formatDuration(record.totalTime || 0),
+        status: record.endTime ? '完成' : '进行中',
+        statusColor: record.endTime ? '#4CAF50' : '#FF9800',
+        points: record.endTime ? '+5' : '',
+        pointsColor: '#4CAF50'
+      }))
+    }
+  } catch (error) {
+    console.error('获取自习记录失败:', error)
+  }
+}
 
 function handleGoalInput(e) {
   console.log('输入自习目标:', e.detail.value)
 }
 
-function handleTimeModeChange(e) {
-  timeModeIndex.value = e.detail.value
-  currentTimeMode.value = e.detail.value === 0 ? 'forward' : 'countdown'
-  console.log('切换计时模式:', currentTimeMode.value)
+async function fetchStudyStatistic() {
+  try {
+    const res = await getStudyroomStatistic()
+    if (res) {
+      weekStudyHours.value = Math.floor(res.weekStudyDuration / 3600)
+      monthStudyHours.value = Math.floor(res.monthStudyDuration / 3600)
+    }
+  } catch (error) {
+    console.error('获取自习统计失败:', error)
+  }
 }
 
-function handleCountdownChange(e) {
-  countdownIndex.value = e.detail.value
-  countdownMinutes.value = countdownOptions[e.detail.value]
-  console.log('选择倒计时分钟:', countdownMinutes.value)
+onMounted(() => {
+  fetchStudyRecords()
+  fetchStudyStatistic()
+})
+
+function showTimeModePicker() {
+  uni.showActionSheet({
+    itemList: ['正计时', '倒计时'],
+    success: function (res) {
+      const newIndex = res.tapIndex
+      timeModeIndex.value = newIndex
+      countdownMinutes.value = ''
+      countdownIndex.value = 0
+      hasSelectedCountdown.value = false
+      console.log('切换计时模式:', newIndex === 0 ? 'forward' : 'countdown')
+    }
+  })
+}
+
+function showCountdownPicker() {
+  uni.showActionSheet({
+    itemList: ['15分钟', '30分钟', '45分钟', '60分钟', '90分钟', '120分钟'],
+    success: function (res) {
+      countdownIndex.value = res.tapIndex
+      countdownMinutes.value = countdownOptions[res.tapIndex]
+      hasSelectedCountdown.value = true
+      console.log('选择倒计时分钟:', countdownMinutes.value)
+    },
+    fail: function (res) {
+      console.log('取消选择')
+    }
+  })
 }
 
 function handleModeSwitch(mode) {
@@ -177,12 +212,15 @@ function handleModeSwitch(mode) {
 
 async function handleStartStudy() {
   const goal = currentGoal.value || '自习'
-  const mode = currentTimeMode.value === 'forward' ? 1 : 2
-  const planTime = currentTimeMode.value === 'countdown' ? parseInt(countdownMinutes.value) * 60 : null
+  const mode = timeModeIndex.value === 0 ? 1 : 2
+  const planTime = mode === 2 ? Number(countdownMinutes.value) * 60 : 0
   const focusModeVal = focusMode.value === 'normal' ? 0 : 1
   
-  if (mode === 2 && !countdownMinutes.value) {
-    uni.showToast({ title: '请选择倒计时时长', icon: 'none' })
+  if (timeModeIndex.value === 1 && !hasSelectedCountdown.value) {
+    uni.showToast({
+      title: '请选择倒计时时长',
+      icon: 'none'
+    })
     return
   }
   
@@ -200,7 +238,8 @@ async function handleStartStudy() {
         const url = `/pages/timer/index?mode=${currentTimeMode.value}&countdown=${countdownMinutes.value || 0}&id=${studyRecordId}`
         uni.navigateTo({ url })
       } else {
-        uni.navigateTo({ url: `/pages/pomodoro/index?id=${studyRecordId}` })
+        const url = `/pages/pomodoro/index?id=${studyRecordId}&countdown=${countdownMinutes.value || 15}`
+        uni.navigateTo({ url })
       }
     }
   } catch (error) {
@@ -441,19 +480,6 @@ page {
   color: #333333;
   display: block;
   padding: 28rpx 30rpx 16rpx;
-}
-
-.record-header {
-  display: flex;
-  padding: 16rpx 30rpx;
-  background-color: #F5F5F5;
-}
-
-.header-item {
-  font-size: 22rpx;
-  color: #999999;
-  flex: 1;
-  text-align: center;
 }
 
 .record-row {

@@ -15,7 +15,7 @@ const BASE_URL_MAP = {
 const baseUrl = BASE_URL_MAP[ENV] || BASE_URL_MAP.development
 
 // 开发调试模式：true为使用模拟登录，false为使用真实登录
-export const USE_MOCK_LOGIN = false
+export const USE_MOCK_LOGIN = true
 
 const clientId = 'wx_mini_app'
 const clientVersion = '1.0.0'

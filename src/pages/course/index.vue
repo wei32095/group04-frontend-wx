@@ -15,7 +15,6 @@
           class="course-code-input" 
           placeholder="课程码" 
           v-model="courseCode"
-          maxlength="6"
           @input="handleCourseCodeInput"
         />
         <view class="join-btn" @click="handleJoinCourse">
@@ -98,63 +97,57 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { joinCourseByCode, getStudentCourseList } from '@/api/course'
 
 const courseCode = ref('')
 const layoutType = ref('grid')
+const courseList = ref([])
 
-const courseList = ref([
-  {
-    id: 1,
-    name: '高等数学（上）',
-    code: 'MATH',
-    teacher: '张教授',
-    progress: 75,
-    tag: '必修课',
-    tagType: 'required',
-    gradient: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)'
-  },
-  {
-    id: 2,
-    name: '大学英语II',
-    code: 'ENGLISH',
-    teacher: '李老师',
-    progress: 90,
-    tag: '公共课',
-    tagType: 'public',
-    gradient: 'linear-gradient(135deg, #2196F3 0%, #1565C0 100%)'
-  },
-  {
-    id: 3,
-    name: '数据结构与算法',
-    code: 'DATA',
-    teacher: '王老师',
-    progress: 45,
-    tag: '专业课',
-    tagType: 'professional',
-    gradient: 'linear-gradient(135deg, #FF9800 0%, #EF6C00 100%)'
-  },
-  {
-    id: 4,
-    name: '线性代数',
-    code: 'LINEAR',
-    teacher: '陈教授',
-    progress: 30,
-    tag: '必修课',
-    tagType: 'required',
-    gradient: 'linear-gradient(135deg, #9C27B0 0%, #6A1B9A 100%)'
-  }
-])
+const gradients = [
+  'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+  'linear-gradient(135deg, #2196F3 0%, #1565C0 100%)',
+  'linear-gradient(135deg, #FF9800 0%, #EF6C00 100%)',
+  'linear-gradient(135deg, #9C27B0 0%, #6A1B9A 100%)',
+  'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)',
+  'linear-gradient(135deg, #00BCD4 0%, #0097A7 100%)'
+]
 
 function handleCourseClick(course) {
-  console.log('点击课程:', course)
+  uni.navigateTo({
+    url: `/pages/course/detail/index?courseId=${course.id}`
+  })
 }
 
 function handleCourseCodeInput(e) {
   console.log('输入课程码:', e.detail.value)
 }
 
-function handleJoinCourse() {
-  console.log('加入课程:', courseCode.value)
+async function handleJoinCourse() {
+  const code = courseCode.value.trim()
+  if (!code) {
+    uni.showToast({ title: '请输入课程码', icon: 'none' })
+    return
+  }
+  
+  try {
+    const res = await joinCourseByCode({ courseCode: code })
+    if (res) {
+      uni.showToast({ title: '加入课程成功', icon: 'success' })
+      courseCode.value = ''
+      await fetchCourseList()
+    }
+  } catch (error) {
+    console.error('加入课程失败:', error)
+    let msg = '加入课程失败'
+    if (error && error.code === 404) {
+      msg = '课程码不存在'
+    } else if (error && error.code === 409) {
+      msg = '已加入该课程'
+    } else if (error && error.code === 400) {
+      msg = '课程不可加入'
+    }
+    uni.showToast({ title: msg, icon: 'none' })
+  }
 }
 
 function handleLayoutSwitch(type) {
@@ -162,17 +155,31 @@ function handleLayoutSwitch(type) {
   console.log('切换布局:', type)
 }
 
-function handleNoticeClick() {
-  console.log('点击通知')
-  uni.switchTab({ url: '/pages/index/index' })
+async function fetchCourseList() {
+  try {
+    const res = await getStudentCourseList({ pageNum: 1, pageSize: 20 })
+    if (res && Array.isArray(res)) {
+      courseList.value = res.map((course, index) => ({
+        id: course.courseId,
+        name: course.courseTitle || '未知课程',
+        code: course.courseTitle ? course.courseTitle.substring(0, 4).toUpperCase() : 'CODE',
+        teacher: course.teacherName || '未知教师',
+        progress: course.progress || 0,
+        tag: course.status === 'active' ? '进行中' : '待加入',
+        tagType: course.status === 'active' ? 'required' : 'public',
+        gradient: gradients[index % gradients.length],
+        cover: course.cover,
+        joinedAt: course.joinedAt
+      }))
+    }
+  } catch (error) {
+    console.error('获取课程列表失败:', error)
+  }
 }
 
-function handleAvatarClick() {
-  console.log('点击头像')
-  uni.switchTab({ url: '/pages/profile/index' })
-}
-
-onMounted(() => {})
+onMounted(() => {
+  fetchCourseList()
+})
 </script>
 
 <style scoped>

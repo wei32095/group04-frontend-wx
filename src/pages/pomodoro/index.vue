@@ -34,7 +34,10 @@
     <view class="modal-overlay" v-if="showModal" @click="handleModalClose">
       <view class="modal-content" @click.stop>
         <text class="modal-title">自习结束</text>
-        <text class="modal-desc">本次自习{{ realUsedMinutes }}分钟</text>
+        <text class="modal-desc">本次自习{{ studyMinutes }}分钟</text>
+        <text class="modal-valid" :class="{ 'valid': isValidStudy === 1, 'invalid': isValidStudy === 0 }">
+          {{ isValidStudy === 1 ? '有效学习 +5积分' : (isValidStudy === 0 ? '切屏过多，不计入积分' : '') }}
+        </text>
         <view class="modal-btn" @click="handleModalClose">
           <text class="modal-btn-text">确定</text>
         </view>
@@ -45,17 +48,23 @@
 
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { endStudy } from '@/api/studyroom'
 
 const currentPhase = ref('focus')
-const focusDuration = 15
-const breakDuration = 5
-const totalSeconds = ref(focusDuration * 60)
-const currentSeconds = ref(focusDuration * 60)
+const focusDuration = ref(15)
+const breakDuration = ref(5)
+const totalSeconds = ref(focusDuration.value * 60)
+const currentSeconds = ref(focusDuration.value * 60)
 const isPaused = ref(false)
 const showModal = ref(false)
 const studyRecordId = ref(null)
+const screenSwitchCount = ref(0)
+const hasEnded = ref(false)
+const totalStudyTime = ref(0)
+const isValidStudy = ref(0)
 let timer = null
+let isBackground = false
 
 const realUsedSeconds = ref(0)
 
@@ -70,6 +79,13 @@ const formattedTime = computed(() => {
 const realUsedMinutes = computed(() => {
   const sec = realUsedSeconds.value
   return sec === 0 ? 0 : Math.ceil(sec / 60)
+})
+
+const studyMinutes = computed(() => {
+  if (totalStudyTime.value > 0) {
+    return Math.ceil(totalStudyTime.value / 60)
+  }
+  return realUsedMinutes.value
 })
 
 const totalMinutes = computed(() => {
@@ -87,15 +103,37 @@ onLoad((options) => {
   }
   realUsedSeconds.value = 0
   studyRecordId.value = options.id || null
-  console.log('番茄钟参数：id=', studyRecordId.value)
+  const countdown = parseInt(options.countdown) || 15
+  focusDuration.value = countdown
+  console.log('番茄钟参数：id=', studyRecordId.value, 'countdown=', countdown)
   currentPhase.value = 'focus'
-  totalSeconds.value = focusDuration * 60
+  totalSeconds.value = focusDuration.value * 60
   currentSeconds.value = totalSeconds.value
   startTimer()
 })
 
+onShow(() => {
+  if (isBackground) {
+    screenSwitchCount.value++
+    isBackground = false
+  }
+})
+
+onHide(() => {
+  isBackground = true
+})
+
 onUnmounted(() => {
   stopTimer()
+  if (studyRecordId.value && !hasEnded.value) {
+    hasEnded.value = true
+    endStudy({
+      id: studyRecordId.value,
+      screenSwitchCount: screenSwitchCount.value
+    }).catch(error => {
+      console.error('结束自习失败:', error)
+    })
+  }
 })
 
 function startTimer() {
@@ -123,11 +161,11 @@ function stopTimer() {
 function switchPhase() {
   if (currentPhase.value === 'focus') {
     currentPhase.value = 'break'
-    totalSeconds.value = breakDuration * 60
+    totalSeconds.value = breakDuration.value * 60
     currentSeconds.value = totalSeconds.value
   } else {
     currentPhase.value = 'focus'
-    totalSeconds.value = focusDuration * 60
+    totalSeconds.value = focusDuration.value * 60
     currentSeconds.value = totalSeconds.value
   }
 }
@@ -136,8 +174,23 @@ function handlePause() {
   isPaused.value = !isPaused.value
 }
 
-function handleStop() {
+async function handleStop() {
   stopTimer()
+  if (studyRecordId.value && !hasEnded.value) {
+    hasEnded.value = true
+    try {
+      const res = await endStudy({
+        id: studyRecordId.value,
+        screenSwitchCount: screenSwitchCount.value
+      })
+      if (res) {
+        totalStudyTime.value = res.totalTime
+        isValidStudy.value = res.isValid
+      }
+    } catch (error) {
+      console.error('结束自习失败:', error)
+    }
+  }
   showModal.value = true
 }
 
@@ -345,7 +398,21 @@ page {
   font-size: 32rpx;
   color: #666666;
   display: block;
+  margin-bottom: 16rpx;
+}
+
+.modal-valid {
+  font-size: 28rpx;
+  display: block;
   margin-bottom: 48rpx;
+}
+
+.modal-valid.valid {
+  color: #4CAF50;
+}
+
+.modal-valid.invalid {
+  color: #E53935;
 }
 
 .modal-btn {

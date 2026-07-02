@@ -24,10 +24,6 @@ export async function createStudyroom(data) {
   return http.post('/studyroom/create', data)
 }
 
-export async function startStudy(data) {
-  return http.post('/studyroom/create', data)
-}
-
 export async function joinStudyroom(data) {
   return http.post('/studyroom/join', data)
 }
@@ -42,4 +38,12 @@ export async function getStudyroomMembers(data) {
 
 export async function getStudyroomRecords(data) {
   return http.get('/studyroom/records', data)
+}
+
+export async function getStudyroomStatistic(data) {
+  return http.get('/studyroom/statistic', data)
+}
+
+export async function endStudy(data) {
+  return http.post('/studyroom/end', data)
 }
